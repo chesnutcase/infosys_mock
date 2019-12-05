@@ -39,11 +39,11 @@ class EventController extends Controller
         foreach ($speaker_images_files as $speaker_image_file) {
             \Log::info('help la');
             \Log::info($speaker_image_file->getClientOriginalName());
-            $path = Storage::disk('s3')->put("events/{$event->id}/speakers", $speaker_image_file);
+            $path = Storage::disk('s3')->put("events/{$event->id}/speakers", $speaker_image_file, 'public');
             array_push($speaker_images_paths, $path);
         }
         if ($request->hasFile('picture')) {
-            $path = Storage::disk('s3')->put("events/{$event->id}", $request->file('picture'));
+            $path = Storage::disk('s3')->put("events/{$event->id}", $request->file('picture'), 'public');
             $event->picture = $path;
         }
         $event->speaker_images = $speaker_images_paths;
@@ -59,11 +59,11 @@ class EventController extends Controller
         $speaker_images_files = $request->file('speaker_images');
         $speaker_images_paths = [];
         foreach ($speaker_images_files as $speaker_image_file) {
-            $path = Storage::disk('s3')->put("events/{$event->id}/speakers", $speaker_image_file);
+            $path = Storage::disk('s3')->put("events/{$event->id}/speakers", $speaker_image_file, 'public');
             array_push($speaker_images_paths, $path);
         }
         if ($request->hasFile('picture')) {
-            $path = Storage::disk('s3')->put("events/{$event->id}", $request->file('picture'));
+            $path = Storage::disk('s3')->put("events/{$event->id}", $request->file('picture'), 'public');
             $event->picture = $path;
         }
         $event->speaker_images = $speaker_images_paths;
