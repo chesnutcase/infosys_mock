@@ -23,7 +23,7 @@ class CreateEventsTable extends Migration
             $table->dateTime('start');
             $table->dateTime('end');
             $table->string('location');
-            $table->integer('max_pax');
+            $table->integer('max_pax')->unsigned()->nullable();
         });
     }
 

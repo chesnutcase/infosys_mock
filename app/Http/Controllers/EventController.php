@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Attendee;
 use App\Event;
+use Aws\Lambda\LambdaClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class EventController extends Controller
 {
@@ -20,6 +23,15 @@ class EventController extends Controller
 
     public function store(Request $request)
     {
+        $validatedData = $request->validate([
+            'title' => 'required|max:255',
+            'description' => 'required',
+            'location' => 'required',
+            'picture' => 'required|image',
+            'speaker_images.*' => 'required|image',
+            'start' => 'date_format:Y-m-d H:i',
+            'end' => 'date_format:Y-m-d H:i',
+        ]);
         $event = Event::create($request->except(['picture', 'speaker_images']));
 
         $speaker_images_files = $request->file('speaker_images');
@@ -37,7 +49,7 @@ class EventController extends Controller
         $event->speaker_images = $speaker_images_paths;
         $event->save();
 
-        return response()->json($event, 201);
+        return response()->json($event->fresh(), 201);
     }
 
     public function update(Request $request, Event $event)
@@ -57,7 +69,7 @@ class EventController extends Controller
         $event->speaker_images = $speaker_images_paths;
         $event->save();
 
-        return response()->json($event, 200);
+        return response()->json($event->fresh(), 200);
     }
 
     public function delete(Event $event)
@@ -65,5 +77,62 @@ class EventController extends Controller
         $event->delete();
 
         return response()->json(null, 204);
+    }
+
+    public function registerQR(Request $request, Event $event)
+    {
+        $attendee = $this->newAttendee($request, $event);
+        if (!is_null($event->max_pax) && $event->attendees()->count() >= $event->max_pax) {
+            if ($event->accept_waitlist) {
+                // set waitlist_no to non null, DB trigger will handle the rest
+                $attendee->waitlist_no = 1;
+                $attendee->save();
+
+                return response()->json([
+                    'error' => 'waitlist',
+                ], 400);
+            } else {
+                return response()->json([
+                    'error' => 'full',
+                ], 400);
+            }
+        } else {
+            $randomFilename = Str::random(50);
+            $qrPath = "qrcodes/${randomFilename}.png";
+            $qrSecret = Str::random(50);
+            $qrHash = bcrypt($qrSecret);
+            $attendee->qr_hash = $qrHash;
+            $lambdaClient = LambdaClient::factory([
+                'version' => 'latest',
+                'region' => env('AWS_DEFAULT_REGION'),
+            ]);
+            $lambdaArgs = [
+                'key' => $qrPath,
+                'secret' => $qrSecret,
+                'mode' => $request->input('mode') ?? 'oka',
+                'colorful' => $request->has('colorful') ? filter_var($request->input('colorful'), FILTER_VALIDATE_BOOLEAN) : true,
+            ];
+            $result = $lambdaClient->invoke([
+                'FunctionName' => env('QR_GENERATOR_LAMBDA'),
+                'Payload' => json_encode($lambdaArgs),
+            ]);
+            $attendee->save();
+
+            return [
+                'qr_link' => json_decode((string) $result->get('Payload'), true)['body'],
+                'message' => 'success',
+            ];
+        }
+    }
+
+    private function newAttendee(Request $request, Event $event)
+    {
+        $data = array_merge($request->validate([
+            'email' => 'required|email',
+            'name' => 'required',
+        ]), ['event_id' => $event->id]);
+        $attendee = Attendee::make($data);
+
+        return $attendee;
     }
 }

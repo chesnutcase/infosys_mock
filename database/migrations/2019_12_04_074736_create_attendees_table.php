@@ -15,7 +15,11 @@ class CreateAttendeesTable extends Migration
     {
         Schema::create('attendees', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->integer('event_id')->references('id')->on('events');
+            $table->bigInteger('event_id')->unsigned();
+            $table->foreign('event_id')->references('id')->on('events')->onDelete('cascade');
+            $table->string('qr_hash')->nullable();
+            $table->string('face')->nullable();
+            $table->timestamp('attended_at')->nullable();
             $table->string('email');
             $table->string('name');
             $table->integer('waitlist_no')->nullable();

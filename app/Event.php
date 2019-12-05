@@ -2,6 +2,7 @@
 
 namespace App;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class Event extends Model
@@ -12,6 +13,10 @@ class Event extends Model
 
     protected $dates = [
         'start', 'end',
+    ];
+
+    protected $appends = [
+        'current_attendees',
     ];
 
     public function getPictureAttribute($value)
@@ -33,25 +38,33 @@ class Event extends Model
         $this->attributes['speaker_images'] = implode(';', $value);
     }
 
-    /*
-        public function setStartAttribute($value)
-        {
-            return \Carbon\Carbon::parse($value);
-        }
+    public function getCurrentAttendeesAttribute()
+    {
+        return $this->attendees()->count();
+    }
 
-        public function setEndAttribute($value)
-        {
-            return \Carbon\Carbon::parse($value);
-        }
+    public function attendees()
+    {
+        return $this->hasMany("App\Attendee");
+    }
 
-        public function getStartAttribute($value)
-        {
-            return $value->format('Y-m-d H:i');
-        }
+    public function setStartAttribute($value)
+    {
+        $this->attributes['start'] = Carbon::createFromFormat('Y-m-d H:i', $value);
+    }
 
-        public function getEndAttribute($value)
-        {
-            return $value->format('Y-m-d H:i');
-        }
-        **/
+    public function setEndAttribute($value)
+    {
+        $this->attributes['end'] = Carbon::createFromFormat('Y-m-d H:i', $value);
+    }
+
+    public function getStartAttribute($value)
+    {
+        return Carbon::parse($value)->format('Y-m-d H:i');
+    }
+
+    public function getEndAttribute($value)
+    {
+        return Carbon::parse($value)->format('Y-m-d H:i');
+    }
 }
