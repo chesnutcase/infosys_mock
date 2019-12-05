@@ -125,6 +125,60 @@ class EventController extends Controller
         }
     }
 
+    public function registerFace(Request $request, Event $event)
+    {
+        $attendee = $this->newAttendee($request, $event);
+        $request->validate([
+            'selfie' => 'required|image',
+        ]);
+        if (!is_null($event->max_pax) && $event->attendees()->count() >= $event->max_pax) {
+            if ($event->accept_waitlist) {
+                // set waitlist_no to non null, DB trigger will handle the rest
+                $attendee->waitlist_no = 1;
+                $attendee->save();
+
+                return response()->json([
+                    'error' => 'waitlist',
+                ], 400);
+            } else {
+                return response()->json([
+                    'error' => 'full',
+                ], 400);
+            }
+        } else {
+            $tmp_path = Storage::disk('s3')->put('tmp', $request->file('selfie'), 'public');
+            $lambdaClient = LambdaClient::factory([
+                'version' => 'latest',
+                'region' => env('AWS_DEFAULT_REGION'),
+            ]);
+            $result = $lambdaClient->invoke([
+                'FunctionName' => env('FACE_TRAINER_LAMBDA'),
+                'Payload' => json_encode([
+                    'bucket' => env('AWS_BUCKET'),
+                    'key' => $tmp_path,
+                ]),
+            ]);
+
+            $result_payload = json_decode((string) $result->get('Payload'), true);
+
+            if (array_key_exists('statusCode', $result_payload) && $result_payload['statusCode'] == 422) {
+                return response()->json($result_payload['body']);
+            } elseif (array_key_exists('statusCode', $result_payload) && $result_payload['statusCode'] == 200) {
+                $attendee->face = $result_payload['body']['face_id'];
+                $attendee->save();
+
+                return response()->json([
+                    'message' => 'success',
+                ]);
+            } else {
+                return response()->json([
+                    'message' => 'something unexpected happened',
+                    'error' => $result_payload,
+                ], 500);
+            }
+        }
+    }
+
     private function newAttendee(Request $request, Event $event)
     {
         $data = array_merge($request->validate([
