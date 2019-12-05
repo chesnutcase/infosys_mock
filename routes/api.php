@@ -23,3 +23,5 @@ Route::post('events', 'EventController@store');
 Route::put('events/{event}', 'EventController@update');
 Route::delete('events/{event}', 'EventController@delete');
 Route::post('events/{event}/register/QR', 'EventController@registerQR');
+
+Route::post('attendance/QR', 'AttendanceController@takeAttendanceQR');
