@@ -1,0 +1,43 @@
+# Use the name infosys-buckets for this cloudformation stack
+AWSTemplateFormatVersion: 2010-09-09
+Metadata:
+  'AWS::CloudFormation::Designer':
+    01c6312d-0cce-473d-b331-f3d73e434543:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -320
+        'y': -20
+      z: 0
+      embeds: []
+    dd852b79-5f4e-4431-8ec3-7479cff77d45:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -130
+        'y': 0
+      z: 0
+      dependson:
+        - 01c6312d-0cce-473d-b331-f3d73e434543
+    67ec2944-f810-4aa0-ac01-1c0bd9a4d67d:
+      source:
+        id: dd852b79-5f4e-4431-8ec3-7479cff77d45
+      target:
+        id: 01c6312d-0cce-473d-b331-f3d73e434543
+      z: 1
+Resources:
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      AccessControl: PublicRead
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 01c6312d-0cce-473d-b331-f3d73e434543
+
+Outputs:
+  BucketName:
+    Value: !Ref 'S3Bucket'
+    Description: Name of the Amazon S3 bucket to dump shit to
+

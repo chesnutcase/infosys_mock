@@ -1,0 +1,52 @@
+service: infosys-mock
+
+provider:
+    name: aws
+    runtime: provided
+
+plugins:
+    - ./vendor/bref/bref
+
+package:
+  exclude:
+    - node_modules/**
+    - public/storage
+    - storage/**
+    - tests/**
+
+functions:
+    website:
+        handler: public/index.php
+        timeout: 28 # in seconds (API Gateway has a timeout of 29 seconds)
+        layers:
+            - ${bref:layer.php-73-fpm}
+        events:
+            -   http: 'ANY /'
+            -   http: 'ANY /{proxy+}'
+    artisan:
+        handler: artisan
+        timeout: 120 # in seconds
+        layers:
+            - ${bref:layer.php-73} # PHP
+            - ${bref:layer.console} # The "console" layer
+
+resources:
+  Resources:
+    S3BucketRole:
+      Type: 'AWS::IAM::User'
+      Properties:
+          Policies:
+              - PolicyName: GiveAccessToBucket
+                PolicyDocument:
+                    Version: '2012-20-17'
+                    Statement:
+                        - Effect: Allow
+                          Action:
+                              - s3:*
+                          Resource:
+                              - !GetAtt S3Bucket.Arn
+      Metadata:
+        'AWS::CloudFormation::Designer':
+          id: dd852b79-5f4e-4431-8ec3-7479cff77d45
+      DependsOn:
+        - S3Bucket

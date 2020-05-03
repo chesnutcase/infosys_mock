@@ -14,3 +14,13 @@
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/attendee/{attendee}/deregister/{nonce}', function(App\Attendee $attendee, String $nonce){
+   $event_name = $attendee->event->title;
+   if($nonce === $attendee->delete_nonce){
+       $attendee->delete();
+       return view("deregistered", [
+          "event_name" => $event_name
+       ]);
+   }
+});

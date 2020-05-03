@@ -22,6 +22,7 @@ class CreateAttendeesTable extends Migration
             $table->timestamp('attended_at')->nullable();
             $table->string('email');
             $table->string('name');
+            $table->String('delete_nonce')->nullable();
             $table->integer('waitlist_no')->nullable();
             $table->timestamps();
         });

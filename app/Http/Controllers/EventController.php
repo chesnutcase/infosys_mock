@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Attendee;
 use App\Event;
+use App\Mail\RegisteredForEvent;
 use Aws\Lambda\LambdaClient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -116,10 +118,15 @@ class EventController extends Controller
                 'FunctionName' => env('QR_GENERATOR_LAMBDA'),
                 'Payload' => json_encode($lambdaArgs),
             ]);
+
+            $attendee->delete_nonce = Str::random();
             $attendee->save();
 
+            $qr_link = json_decode((string) $result->get('Payload'), true)['body'];
+
+            Mail::to($attendee->email)->send(new RegisteredForEvent($attendee, $qr_link));
             return [
-                'qr_link' => json_decode((string) $result->get('Payload'), true)['body'],
+                'qr_link' => $qr_link,
                 'message' => 'success',
             ];
         }
@@ -161,10 +168,14 @@ class EventController extends Controller
 
             $result_payload = json_decode((string) $result->get('Payload'), true);
 
+
             if (array_key_exists('statusCode', $result_payload) && $result_payload['statusCode'] == 422) {
                 return response()->json($result_payload['body']);
             } elseif (array_key_exists('statusCode', $result_payload) && $result_payload['statusCode'] == 200) {
                 $attendee->face = $result_payload['body']['face_id'];
+                $attendee->delete_nonce = Str::random();
+
+                Mail::to($attendee->email)->send(new RegisteredForEvent($attendee));
                 $attendee->save();
 
                 return response()->json([
